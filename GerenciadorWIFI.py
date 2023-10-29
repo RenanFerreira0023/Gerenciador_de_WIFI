@@ -2,6 +2,7 @@ import subprocess
 import tkinter as tk
 import json
 import time
+import re
 
 import datetime
 import sys
@@ -37,47 +38,37 @@ def desconectar_wifi():
     status_label.config(text="Desconectado da rede")
 
 
-
-
-# Função para verificar e controlar o Wi-Fi com base nos horários
-def verificar_horario_wifi_BKP():
-    hora_atual = time.strftime("%H:%M")
-    hora_inicio = hora_inicio_entry_1.get()
-    hora_final = hora_final_entry_1.get()
-    
-    result = subprocess.run('netsh wlan show interfaces', shell=True, capture_output=True, text=True)
-    
-    if "Conectado" in result.stdout:
-        if hora_inicio <= hora_atual <= hora_final:
-            # Está dentro do horário, Wi-Fi já está ligado
-            status_label.config(text="Wi-Fi ligado")
-        else:
-            # Está fora do horário, desligue o Wi-Fi
-            comando = 'netsh wlan disconnect'
-            subprocess.run(comando, shell=True)
-            status_label.config(text="Desconectado da rede")
-            status_label.config(text="Wi-Fi desligado")
+def extrair_estado_wifi(output):
+   # Use a regular expression to extract the state value
+    state_match = re.search(r'State\s*:\s*([\w\s]+)', output, re.IGNORECASE)
+    if state_match:
+        state = state_match.group(1).strip().upper()  # Convert to UPPERCASE
+        return verifica_palavra(state,"CONNECTED")
     else:
-        if hora_inicio <= hora_atual <= hora_final:
-            # Está dentro do horário, ligue o Wi-Fi
-            # subprocess.run('netsh interface set interface "Wi-Fi" admin=enable', shell=True)
-            ssid = ssid_entry.get()
-            senha = senha_entry.get()
-            comando = f'netsh wlan set profileparameter name="{ssid}" keyMaterial="{senha}"'
-            subprocess.run(comando, shell=True)
-            comando = f'netsh wlan connect name="{ssid}"'
-            subprocess.run(comando, shell=True)
-            status_label.config(text=f"Conectado à rede: {ssid}")
-
-            status_label.config(text="Wi-Fi ligado")
+        state_match = re.search(r'Estado\s*:\s*([\w\s]+)', output, re.IGNORECASE)
+        if state_match:
+            state = state_match.group(1).strip().upper()  # Convert to UPPERCASE
+            return verifica_palavra(state,"CONECTADO")
         else:
-            # Está fora do horário, Wi-Fi já está desligado
-            status_label.config(text="Wi-Fi desligado")
+            return None
     
-    # Agende a próxima verificação em 5 segundos
-    window.after(15000, verificar_horario_wifi)
+    
+def verifica_palavra(texto, palavra_procurada):
+    # Divide o texto em palavras
+    palavras = texto.split()
 
+    # Converte a palavra procurada para letras minúsculas (para comparação sem diferenciação de maiúsculas e minúsculas)
+    palavra_procurada = palavra_procurada.lower()
 
+    for palavra in palavras:
+        # Converte cada palavra do texto para letras minúsculas
+        palavra = palavra.lower()
+
+        if palavra == palavra_procurada:
+            return palavra_procurada
+
+    return "DESCONECTADO"
+    
 # Função para verificar e controlar o Wi-Fi com base nos horários
 def verificar_horario_wifi():
     hora_atual = time.strftime("%H:%M")
@@ -94,20 +85,47 @@ def verificar_horario_wifi():
     hora_final_3 = hora_final_entry_3.get()
     
     result = subprocess.run('netsh wlan show interfaces', shell=True, capture_output=True, text=True)
+    print("")
+    print("")
     
+    print("hora_atual  "+hora_atual)
+    print("")
    
+    print("usar_faixa_1  "+str(usar_faixa_1))
+    print("hora_inicio_1  "+hora_inicio_1)
+    print("hora_final_1  "+hora_final_1)
+    print("")
+    print("usar_faixa_2  "+str(usar_faixa_2))
+    print("hora_inicio_2  "+hora_inicio_2)
+    print("hora_final_2  "+hora_final_2)
+    print("")
+    print("usar_faixa_3  "+str(usar_faixa_3))
+    print("hora_inicio_3  "+hora_inicio_3)
+    print("hora_inicio_3  "+hora_inicio_3)
+    print("hora_final_3  "+hora_final_3)
+#    print("result.stdout  "+result.stdout)
+    resultStdout = extrair_estado_wifi(result.stdout).upper()
+    print("resultStdout  "+resultStdout)
 
-    if "Conectado" in result.stdout or "Conected" in result.stdout:
+    if "CONECTADO" == resultStdout or "CONNECTED" == resultStdout:
         # o wifi esta ligado
         status_label.config(text="Wi-Fi Ligado")
         inHours = "NO"
+        whoHourRange = 0
         if usar_faixa_1 == True and  hora_inicio_1 <= hora_atual and hora_final_1 >= hora_atual:
             inHours = "YES"
+            whoHourRange = 1
         if usar_faixa_2 == True and hora_inicio_2 <= hora_atual and hora_final_2 >= hora_atual:
             inHours = "YES"
+            whoHourRange = 2
         if usar_faixa_3 == True and hora_inicio_3 <= hora_atual and hora_final_3 >= hora_atual:
             inHours = "YES"
-
+            whoHourRange = 3
+        
+        print("O Wi-fi esta ligado")
+        if whoHourRange != 0:
+            print("Estou dentro da faixa "+str(whoHourRange)+" de horario")
+        
         if(inHours == "NO"):
             # Está fora do horário, desligue o Wi-Fi
             comando = 'netsh wlan disconnect'
@@ -118,12 +136,20 @@ def verificar_horario_wifi():
         # o wifi esta desligado
         status_label.config(text="Wi-Fi desligado")
         inHours = "NO"
-        if usar_faixa_1 == True and  hora_inicio_1 <= hora_atual and hora_final_1 >= hora_atual :
+        whoHourRange = 0
+        if usar_faixa_1 == True and  hora_inicio_1 < hora_atual and hora_final_1 > hora_atual :
             inHours = "YES"
-        if usar_faixa_2 == True and hora_inicio_2 <= hora_atual and hora_final_2 >= hora_atual:
+            whoHourRange = 1
+        if usar_faixa_2 == True and hora_inicio_2 < hora_atual and hora_final_2 > hora_atual:
             inHours = "YES"
-        if usar_faixa_3 == True and hora_inicio_3 <= hora_atual and hora_final_3 >= hora_atual:
+            whoHourRange = 2
+        if usar_faixa_3 == True and hora_inicio_3 < hora_atual and hora_final_3 > hora_atual:
             inHours = "YES"
+            whoHourRange = 3
+            
+        print("O Wi-fi esta desligado")
+        if whoHourRange != 0:
+            print("Entrou dentro de uma faixa de horairo "+str(whoHourRange) )
 
         if inHours == "YES":
             # Está dentro do horário, ligue o Wi-Fi
@@ -337,7 +363,7 @@ status_label.grid(row=18, column=0, columnspan=2)
 
 
 # Texto do rótulo
-texto = "# # # Gerenciador de WIFI v1.1 # # #"
+texto = "# # # Gerenciador de WIFI v1.4 # # #"
 texto += "\nRenan Dutra Ferreira   < - - Desenvolvedor"
 texto += "\n @_fdutra  < - - Instagram para contato"
 # Crie um rótulo e use o gerenciador 'grid' para posicionar

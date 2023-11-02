@@ -8,3 +8,8 @@ para montar o .exe usaremos o pyinstaller
 Este sistema apenas liga e desliga o WI-FI automaticamente.
 
 definindo 3 faixas de horários para manter ligado.
+
+
+
+
+Para montar o .exe use o pyinstaller
